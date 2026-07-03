@@ -7,3 +7,5 @@ use App\Http\Controllers\PostController;
 Route::get('/post', [PostController::class, 'index']);
 Route::post('/post', [PostController::class, 'create']);
 Route::delete('/post/{id}', [PostController::class, 'destroy']);
+Route::get('/post/{id}', [PostController::class, 'show']);
+Route::post('/post/update/{id}', [PostController::class, 'update']);

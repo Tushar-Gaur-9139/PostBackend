@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Storage;
 use App\Models\Post;
 use App\Http\Requests\StorePostRequest;
 use Illuminate\Http\Request;
@@ -39,7 +40,6 @@ class PostController extends Controller
     public function create(StorePostRequest $request): JsonResponse
     {
         $validatedData = $request->safe()->except(['images']);
-
         $uploadedImagesPaths = [];
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
@@ -49,7 +49,6 @@ class PostController extends Controller
         }
         $validatedData['images'] = $uploadedImagesPaths;
         $post = Post::create($validatedData);
-
         return response()->json([
             'status'  => true,
             'message' => 'Post created successfully.',
@@ -83,6 +82,66 @@ class PostController extends Controller
         return response()->json([
             'status'  => true,
             'message' => 'Post deleted successfully.'
+        ], 200);
+    }
+    public function show($id): JsonResponse
+    {
+        $post = Post::find($id);
+
+        if (!$post) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Post not found.'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Post retrieved successfully.',
+            'data' => $post
+        ], 200);
+    }
+
+    public function update(StorePostRequest $request, $id): JsonResponse
+    {
+        $post = Post::find($id);
+        if (!$post) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Post not found.'
+            ], 404);
+        }
+        $validatedData = $request->safe()->except(['images']);
+        $existingImagesRaw = $request->input('existing_images');
+        $existingImages = [];
+        if (is_string($existingImagesRaw)) {
+            $existingImages = json_decode($existingImagesRaw, true);
+            if (json_last_error() !== JSON_ERROR_NONE || !is_array($existingImages)) {
+                $existingImages = [];
+            }
+        } elseif (is_array($existingImagesRaw)) {
+            $existingImages = $existingImagesRaw;
+        }
+        $currentImages = is_array($post->images) ? $post->images : [];
+        $imagesToDelete = array_diff($currentImages, $existingImages);
+        foreach ($imagesToDelete as $imagePath) {
+            if (Storage::disk('public')->exists($imagePath)) {
+                Storage::disk('public')->delete($imagePath);
+            }
+        }
+        $uploadedImagesPaths = [];
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $path = $image->store('posts', 'public');
+                $uploadedImagesPaths[] = $path;
+            }
+        }
+        $validatedData['images'] = array_merge($existingImages, $uploadedImagesPaths);
+        $post->update($validatedData);
+        return response()->json([
+            'status'  => true,
+            'message' => 'Post updated successfully.',
+            'data'    => $post
         ], 200);
     }
 }

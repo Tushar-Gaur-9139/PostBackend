@@ -13,14 +13,12 @@ class StorePostRequest extends FormRequest
 
     public function rules(): array
     {
-        // Define dependent validation constraints matching your React UI options
+        $isUpdate = $this->route('id') || $this->method() === 'PUT' || ($this->method() === 'POST' && str_contains($this->route()->getName() ?? '', 'update'));
         $subCategoryMapping = [
             'a' => ['a1', 'a2', 'a3'],
             'b' => ['b1', 'b2', 'b3'],
             'c' => ['c1', 'c2', 'c3']
         ];
-
-        // Safely extract allowed subcategories based on the current request's category
         $allowedSubCategories = isset($subCategoryMapping[$this->category])
             ? implode(',', $subCategoryMapping[$this->category])
             : '';
@@ -30,11 +28,9 @@ class StorePostRequest extends FormRequest
             'price'        => 'required|numeric|min:0.01',
             'category'     => 'required|in:a,b,c',
             'sub_category' => 'required|string|in:' . $allowedSubCategories,
-
-            // Validate that 'images' is a provided array with at least one item
-            // 'images'       => 'required|array|min:1',
-            // Validate each individual file inside the array
-            // 'images.*'     => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'images'        => $isUpdate ? 'nullable|array' : 'required|array',
+            'images.*'      => 'image|mimes:jpeg,png,jpg,gif|max:2048',
+            'existing_images' => 'nullable'
         ];
     }
 
